@@ -5,15 +5,26 @@ import gif2numpy
 import tkinter as tk
 import PIL.Image, PIL.ImageTk
 from matplotlib import pyplot as plt
+from incrustation import *
+from extraction import *
 
 
 def readImage(e1, e2):
     if e1.get():
         photo="images/"+e1.get()+".png"
-        cv_img = cv2.cvtColor(cv2.imread(photo), cv2.COLOR_BGR2RGB)
+        cv_img = cv2.imread(photo, 1)
+        imgToShow = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
         #cv2.imwrite('log_transformed.jpg', img)
-        openNewWindow(cv_img)
-    return imgToShow
+        openNewWindow(imgToShow, e2.get())
+        
+def extraction(image):
+ 
+    photo="images/"+image+".jpg"
+    cv_img = cv2.imread(photo, 1)
+    #imgToShow = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+    #cv2.imwrite('log_transformed.jpg', img)
+    openWindowExtraction(cv_img)
+    
     
     
 def showImage(imgToShow):
@@ -22,46 +33,74 @@ def showImage(imgToShow):
     cv2.destroyAllWindows()
 
 
-def openNewWindow(imgToShow):
-      
-    # Toplevel object which will 
-    # be treated as a new window
+def openNewWindow(imgToShow, message):
+ 
+    #def get_coordinates(event):
+    #    canvas.itemconfigure(tag, text='({x}, {y})'.format(x=event.x, y=event.y)) 
+
     root = tk.Toplevel()
-    root.geometry("500x300")
-    root.resizable(0, 0)
-
-    height, width, no_channels = imgToShow.shape 
-    # sets the title of the
-    # Toplevel widget
-  
-    # sets the geometry of toplevel
-    canvas = tk.Canvas(root, width = width, height = height)    
-    canvas.pack()  
-            
+    
+    canvas = tk.Canvas(root, height=250, width=400)
+    
     photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(imgToShow))
-
-    canvas.create_image(0, 0, image=photo, anchor=tk.NW) 
+    photo = photo._PhotoImage__photo.subsample(2)
+    
+    canvas.create_image(0, 0, anchor="nw", image=photo)
+    root.resizable(width=False, height=False)
+    
+    widget = tk.Label(canvas, text='Message to encript: ' + message)
+    widget.pack()
+    
+    canvas.create_window(70, 206, window=widget)  
+    
+    #canvas.bind('<Motion>', get_coordinates)
+    #canvas.bind('<Enter>', get_coordinates)  # handle <Alt>+<Tab> switches between windows
+    #tag = canvas.create_text(10, 10, text='', anchor='nw') 
+    canvas.pack()
+    
+    filename = 'savedImage.jpg'
+    
+    quitButton = tk.Button(root, text='Return to main', command=root.destroy)
+    quitButton.place(x=200, y=10)   
+    
+    stepButton = tk.Button(root, text='Step by step calculation', command= lambda: incrustationStep(imgToShow,filename, message))
+    stepButton.place(x=200, y=50)   
+    
+    directButton = tk.Button(root, text='Direct calculation', command=lambda: incrustation(imgToShow,filename, message))
+    directButton.place(x=200, y=90)   
+    
+    
 
     root.mainloop()
     
-def otra(cv_img):
-    window = tkinter.Tk()
-    window.title("OpenCV and Tkinter")
+def openWindowExtraction(imgToShow):
     
-    # Load an image using OpenCV
+    # Create basic Tkinter structure
+    #def get_coordinates(event):
+    #    canvas.itemconfigure(tag, text='({x}, {y})'.format(x=event.x, y=event.y)) 
+
+    root = tk.Toplevel()
     
-    # Get the image dimensions (OpenCV stores image data as NumPy ndarray)
-    height, width, no_channels = cv_img.shape
+    canvas = tk.Canvas(root, height=250, width=400)
     
-    # Create a canvas that can fit the above image
-    canvas = tkinter.Canvas(window, width = width, height = height)
+    photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(imgToShow))
+    photo = photo._PhotoImage__photo.subsample(2)
+    
+    canvas.create_image(0, 0, anchor="nw", image=photo)
+    root.resizable(width=False, height=False)
+    
+    #canvas.bind('<Motion>', get_coordinates)
+    #canvas.bind('<Enter>', get_coordinates)  # handle <Alt>+<Tab> switches between windows
+    #tag = canvas.create_text(10, 10, text='', anchor='nw') 
     canvas.pack()
     
-    # Use PIL (Pillow) to convert the NumPy ndarray to a PhotoImage
-    photo = PIL.ImageTk.PhotoImage(image = PIL.Image.fromarray(cv_img))
-
-    # Add a PhotoImage to the Canvas
-    canvas.create_image(0, 0, image=photo, anchor=tkinter.NW)
+    quitButton = tk.Button(root, text='Return to main', command=root.destroy)
+    quitButton.place(x=200, y=10)   
     
-    # Run the window loop
-    window.mainloop()
+    stepButton = tk.Button(root, text='Step by step calculation', command= lambda: incrustationStep(imgToShow,filename, message))
+    stepButton.place(x=200, y=50)   
+    
+    directButton = tk.Button(root, text='Direct calculation', command=lambda: extraction(imgToShow))
+    directButton.place(x=200, y=90)   
+    
+    root.mainloop()
