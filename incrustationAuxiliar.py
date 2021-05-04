@@ -19,70 +19,46 @@ class DCT():
         self.oriRow = 0
         self.numBits = 0   
     #encoding part : 
-    def incrustation(self,img,secret_msg):
-        #show(img)
-        secret=secret_msg
+    def incrustation(self,img,secret):
+        
         self.message = str(len(secret))+'*'+secret
         self.bitMess = self.toBits()
+
         #get size of image in pixels
         row,col = img.shape[:2]
-        ##col, row = img.size
         self.oriRow, self.oriCol = row, col  
+
         if((col/8)*(row/8)<len(secret)):
             print("Error: Message too large to encode in image")
-            return False
+            return      
+        
+        #cv2.imshow('g',gray)
+        #cv2.imshow('i', img2)
+        #cv2.waitKey(0)
+        #cv2.destroyAllWindows()
         #make divisible by 8x8
         if row%8 != 0 or col%8 != 0:
             img = self.addPadd(img, row, col)
         
         row,col = img.shape[:2]
-        ##col, row = img.size
+
+        
+        
         #split image into RGB channels
         bImg,gImg,rImg = cv2.split(img)
+        
+        sImg = self.incrustationCore(bImg, row,col)
+        zImg = self.incrustationCore(gImg, row,col)
+        xImg = self.incrustationCore(rImg, row,col)
+
         #message to be hid in blue channel so converted to type float32 for dct function
-        bImg = np.float32(bImg)
-        #break into 8x8 blocks
-        imgBlocks = [np.round(bImg[j:j+8, i:i+8]-128) for (j,i) in itertools.product(range(0,row,8),
-                                                                       range(0,col,8))]
-        #Blocks are run through DCT function
-        dctBlocks = [np.round(cv2.dct(img_Block)) for img_Block in imgBlocks]
-        #blocks then run through quantization table
-        quantizedDCT = [np.round(dct_Block/quant) for dct_Block in dctBlocks]
-        #set LSB in DC value corresponding bit of message
-        messIndex = 0
-        letterIndex = 0
-        for quantizedBlock in quantizedDCT:
-            #find LSB in DC coeff and replace with message bit
-            DC = quantizedBlock[0][0]
-            DC = np.uint8(DC)
-            DC = np.unpackbits(DC)
-            DC[7] = self.bitMess[messIndex][letterIndex]
-            DC = np.packbits(DC)
-            DC = np.float32(DC)
-            DC= DC-255
-            quantizedBlock[0][0] = DC
-            letterIndex = letterIndex+1
-            if letterIndex == 8:
-                letterIndex = 0
-                messIndex = messIndex + 1
-                if messIndex == len(self.message):
-                    break
-        #blocks run inversely through quantization table
-        sImgBlocks = [quantizedBlock *quant+128 for quantizedBlock in quantizedDCT]
-        #blocks run through inverse DCT
-        #sImgBlocks = [cv2.idct(B)+128 for B in quantizedDCT]
-        #puts the new image back together
-        sImg=[]
-        for chunkRowBlocks in self.chunks(sImgBlocks, col/8):
-            for rowBlockNum in range(8):
-                for block in chunkRowBlocks:
-                    sImg.extend(block[rowBlockNum])
-        sImg = np.array(sImg).reshape(row, col)
-        #converted from type float32
-        sImg = np.uint8(sImg)
-        #show(sImg)
-        sImg = cv2.merge((sImg,gImg,rImg))
-        return sImg
+        
+        oneImg = cv2.merge((sImg,gImg,rImg))
+        twoImg = cv2.merge((bImg,zImg,rImg))
+        threeImg = cv2.merge((bImg,gImg,xImg))
+        finalImage = oneImg/3 + twoImg/3 + threeImg/3
+        
+        return oneImg
 
     def chunks(self, l, n):
         m = int(n)
@@ -98,3 +74,68 @@ class DCT():
             bits.append(binval)
         self.numBits = bin(len(bits))[2:].rjust(8,'0')
         return bits
+    
+    
+    def incrustationCore(self, bImg, row,col):
+        
+        bImg = np.float32(bImg)
+        #print(bImg[0:8,0:8])
+    
+        #break into 8x8 blocks
+        imgBlocks = [np.round(bImg[j:j+8, i:i+8]-128) for (j,i) in itertools.product(range(0,row,8),
+                                                                       range(0,col,8))]
+        #print(imgBlocks[1][0])
+        #Blocks are run through DCT function
+        dctBlocks = [np.round(cv2.dct(img_Block)) for img_Block in imgBlocks]
+
+        #blocks then run through quantization table
+        quantizedDCT = [np.round(dct_Block/quant) for dct_Block in dctBlocks]
+        
+        #set LSB in DC value corresponding bit of message
+        messIndex = 0
+        letterIndex = 0
+        
+
+        for quantizedBlock in quantizedDCT:
+            #find LSB in DC coeff and replace with message bit
+            DC = quantizedBlock[0][0]
+            DC = np.uint8(DC)
+            DC = np.unpackbits(DC)
+            #print(DC, end=' ')
+            DC[7] = self.bitMess[messIndex][letterIndex]
+            #print(DC,end= ' ')
+            DC = np.packbits(DC)
+            
+            #print(DC)
+            DC = np.float32(DC)
+            DC= DC-255
+            quantizedBlock[0][0] = DC
+
+            letterIndex = letterIndex+1
+            if letterIndex == 8:
+                letterIndex = 0
+                messIndex = messIndex + 1
+                if messIndex == len(self.message):
+                    break
+        
+        #print(quantizedDCT[1][0])
+
+        #blocks run inversely through quantization table
+        sImgBlocks = [quantizedBlock *quant+128 for quantizedBlock in quantizedDCT]
+        
+        #blocks run through inverse DCT
+        #sImgBlocks = [cv2.idct(B)+128 for B in quantizedDCT]
+        
+        #puts the new image back together
+        sImg=[]
+        for chunkRowBlocks in self.chunks(sImgBlocks, col/8):
+            for rowBlockNum in range(8):
+                for block in chunkRowBlocks:
+                    sImg.extend(block[rowBlockNum])
+        sImg = np.array(sImg).reshape(row, col)
+        
+
+        #converted from type float32
+        sImg = np.uint8(sImg)
+        
+        return sImg

@@ -58,7 +58,7 @@ def main():
     button = tk.Button(root, text='Incrustation', command= lambda: readImage(e1, e2))
     button.grid(row=3, column=1, sticky=tk.W, pady=4)
     
-    button2 = tk.Button(root, text='Extraction', command= lambda: extraction(e1.get()))
+    button2 = tk.Button(root, text='Extraction', command= lambda: extractionAux(e1.get()))
     button2.grid(row=6, column=1, sticky=tk.W, pady=4)
     
     enableDissable()

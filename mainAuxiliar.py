@@ -12,18 +12,17 @@ from extraction import *
 def readImage(e1, e2):
     if e1.get():
         photo="images/"+e1.get()+".png"
-        cv_img = cv2.imread(photo, 1)
-        imgToShow = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+        dct_img = cv2.imread(photo, cv2.IMREAD_UNCHANGED)
         #cv2.imwrite('log_transformed.jpg', img)
-        openNewWindow(imgToShow, e2.get())
+        openNewWindow(dct_img, e2.get())
         
-def extraction(image):
+def extractionAux(image):
  
     photo="images/"+image+".jpg"
-    cv_img = cv2.imread(photo, 1)
-    #imgToShow = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+    #cv_img = cv2.imread(photo, 1)
+    dct_img = cv2.imread(photo, cv2.IMREAD_UNCHANGED)
     #cv2.imwrite('log_transformed.jpg', img)
-    openWindowExtraction(cv_img)
+    openWindowExtraction(dct_img)
     
     
     
@@ -58,7 +57,7 @@ def openNewWindow(imgToShow, message):
     #tag = canvas.create_text(10, 10, text='', anchor='nw') 
     canvas.pack()
     
-    filename = 'savedImage.jpg'
+    filename = 'savedImage.png'
     
     quitButton = tk.Button(root, text='Return to main', command=root.destroy)
     quitButton.place(x=200, y=10)   
