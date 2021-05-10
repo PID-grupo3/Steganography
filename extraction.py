@@ -6,8 +6,6 @@ def extraction(imagen):
     print(mensage)
     return mensage
 
-
-
 photo="images/saved.png"
 dct_img = cv2.imread(photo, cv2.IMREAD_UNCHANGED)
 extraction(dct_img)
