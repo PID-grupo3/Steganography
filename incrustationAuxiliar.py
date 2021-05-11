@@ -1,24 +1,7 @@
 import numpy as np
 import cv2
 import itertools
-
-quant2 = np.array([[16,11,10,16,24,40,51,61],      # QUANTIZATION TABLE
-                    [12,12,14,19,26,58,60,55],    # required for DCT
-                    [14,13,16,24,40,57,69,56],
-                    [14,17,22,29,51,87,80,62],
-                    [18,22,37,56,68,109,103,77],
-                    [24,35,55,64,81,104,113,92],
-                    [49,64,78,87,103,121,120,101],
-                    [72,92,95,98,112,100,103,99]])
-
-quant = np.array([[8, 8 ,8, 9, 1 ,1 ,1, 1],
-                    [8, 8 ,9 ,1 ,1, 1 ,1 ,14],
-                    [8 ,9 ,1 ,1 ,1 ,1 ,14 ,15],
-                    [9 ,1 ,1 ,1 ,1 ,14 ,15 ,16],
-                    [1 ,1 ,1 ,1 ,14 ,15 ,16 ,18],
-                    [1 ,1 ,1 ,14 ,15 ,16 ,18 ,20],
-                    [1 ,1 ,14 ,15 ,16 ,18 ,20 ,22],
-                    [1 ,14 ,15 ,16 ,18 ,20 ,22 ,23]])
+import math
 
 class DCT():    
     def __init__(self): # Constructor
@@ -88,49 +71,54 @@ class DCT():
         self.numBits = bin(len(bits))[2:].rjust(8,'0')
         return bits
     
+    def addBits(self, bit, number):
+        andMask = np.int16(0b1111111111111110)
+        
+        # Bit es int16
+        # Number es int16
+                
+        return (number & andMask) | bit
+    
     
     def incrustationCore(self, bImg, row,col):
         
         med = 128
         
         bImg = np.float32(bImg)
+        
+        print(bImg[0])
     
         #break into 8x8 blocks
-        imgBlocks = [(bImg[j:j+8, i:i+8]-med) for (j,i) in itertools.product(range(0,row,8), range(0,col,8))]
-        #print(imgBlocks[1][0])
+        imgBlocks = [(bImg[i:i+8, j:j+8]-med) for (i,j) in itertools.product(range(0,row,8), range(0,col,8))]
+        
         #Blocks are run through DCT function
         dctBlocks = [(cv2.dct(img_Block)) for img_Block in imgBlocks]
-
-        #blocks then run through quantization table
-        #quantizedDCT = [(dct_Block) for dct_Block in dctBlocks]
         
-        #set LSB in DC value corresponding bit of message
+        #set LSB in DCT value corresponding bit of message
         messIndex = 0
         letterIndex = 0
         for quantizedBlock in dctBlocks:
-               # print(type(quantizedBlock))
+  
             #find LSB in DC coeff and replace with message bit
             DC = quantizedBlock[0][0]
-            DC = np.uint8(DC)
-            DC = np.unpackbits(DC)
+            DC = np.int16(DC)     
+    
+            bit = self.bitMess[messIndex][letterIndex]
             
-            DC[7] = self.bitMess[messIndex][letterIndex]
+            if bit == '1':
+                bit = 1
+            else:
+                bit = 0
             
-            DC = np.packbits(DC)
-            DC = np.float32(DC)
-            
-            DC= DC-255
-            
-            quantizedBlock[0][0] = DC
-
+            quantizedBlock[0][0] = self.addBits(bit, DC)
+            print("Bloque cuantizado: " + str(quantizedBlock[0][0]))
+    
             letterIndex = letterIndex+1
             if letterIndex == 8:
                 letterIndex = 0
                 messIndex = messIndex + 1
                 if messIndex == len(self.message):
                     break
-        
-        #print(quantizedDCT[1][0])
 
         #blocks run inversely through quantization table
         #sImgBlocks = [quantizedBlock*quant+med for quantizedBlock in quantizedDCT]
@@ -139,18 +127,24 @@ class DCT():
         
         sImgBlocks = [cv2.idct(B)+med for B in dctBlocks]
         
+        #print(sImgBlocks[0][0])
+        
         #puts the new image back together
         sImg=[]
+        # LA RECONSTRUCCION ESTA MAL
         for chunkRowBlocks in self.chunks(sImgBlocks, col/8):
             for rowBlockNum in range(8):
                 for block in chunkRowBlocks:
-                    sImg.extend(block[rowBlockNum])
+                    sImg.extend((block[rowBlockNum]))
+        #print(sImg)         
         sImg = np.array(sImg).reshape(row, col)
         
-
         #converted from type float32
+        sImg = np.ceil(sImg)
         sImg = np.uint8(sImg)
         
+        #print(sImg[0])
+
         return sImg
     
     
