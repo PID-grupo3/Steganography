@@ -3,7 +3,7 @@ import math
 import numpy as np
 import itertools
 import seaborn as sns
-import matplotlib.pyplot as plt
+
 quant = np.array([[16,11,10,16,24,40,51,61],      # QUANTIZATION TABLE
                     [12,12,14,19,26,58,60,55],    
                     [14,13,16,24,40,57,69,56],
@@ -20,24 +20,18 @@ def decode_image(img):
     sizeOfMessage = None
     messageInBits = []
     buff = 0
-    print(img)
     # Split image into RGB channels
     bImg,gImg,rImg = cv2.split(img)
 
     # Message hid in blue channel so converted to type float32 for dct function
     bImg = np.float32(bImg)
-    print (bImg)
     # Break into 8x8 blocks
     imgBlocks = [bImg[j:j+8, i:i+8]-128 for (j,i) in itertools.product(range(0,row,8),
                                                                     range(0,col,8))]    
-    print(imgBlocks[0])
     # Blocks run through quantization table
     quantizedDCT = [img_Block/quant for img_Block in imgBlocks]
-    print (quantizedDCT[0])
     heatMap=sns.heatmap(quantizedDCT[0])
-    plt.plot(heatMap)
-    plt.show
-    
+
     i=0
     # Message extracted from LSB of DCT coeff
     for quantizedBlock in quantizedDCT:
@@ -60,6 +54,6 @@ def decode_image(img):
                 except:
                     pass
         if len(messageInBits) - len(str(sizeOfMessage)) - 1 == sizeOfMessage:
-            return ''.join(messageInBits)[len(str(sizeOfMessage))+1:]
+            return ''.join(messageInBits)[len(str(sizeOfMessage))+1:],heatMap,imgBlocks[0],bImg
     
-    return ''
+    return '',heatMap,imgBlocks[0],bImg
