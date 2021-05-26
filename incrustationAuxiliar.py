@@ -4,7 +4,7 @@ import itertools
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-quant = np.array([[16,11,10,16,24,40,51,61],      # QUANTIZATION TABLE
+quant = np.array([[16,11,10,16,24,40,51,61],      # QUANTIZATION TABLE 
                     [12,12,14,19,26,58,60,55],    
                     [14,13,16,24,40,57,69,56],
                     [14,17,22,29,51,87,80,62],
@@ -23,6 +23,7 @@ class DCT():
 
     def incrustation(self,img,secret):
         
+        # Save message data in local variables
         self.message = str(len(secret))+'*'+secret
         self.messageInBits = self.toBits()
 
@@ -30,6 +31,7 @@ class DCT():
         row,col = img.shape[:2]
         self.oriRow, self.oriCol = row, col  
 
+        # Calculate if message fits in the image
         if((col/8)*(row/8)<len(secret)):
             print("Error: Message too large to encode in image")
             return      
@@ -44,29 +46,25 @@ class DCT():
         # Split image into RGB channels
         bImg,gImg,rImg = cv2.split(img)
         
-        sImg = self.incrustationCore(bImg, row,col)
-        zImg = self.incrustationCore(gImg, row,col)
-        xImg = self.incrustationCore(rImg, row,col)
+        # Get the encrypted image and get the heatMap from the quantized DCT matrix
+        sImg, heatMap = self.incrustationCore(bImg,row,col)
         
         # Message will be hide in blue channel
-        BGRImage1 = cv2.merge((sImg,gImg,rImg))
+        encryptedImage = cv2.merge((sImg,gImg,rImg))
         
-        diferenciaBlueError = sImg - bImg
-        errorNumericoBlue = np.mean(diferenciaBlueError**2) 
-        errorNumericoBlue
+        #Calculate blue channel error image and numeric value
+        blueErrorDiff = sImg - bImg
+        blueNumericalError = np.mean(blueErrorDiff**2)
+        blueNumericalError
         
-        diferenciaTotal = BGRImage1 - img
-        errorNumericoTotal = np.mean(diferenciaTotal**2) 
-        errorNumericoTotal
-        
-        cv2.imwrite('images/error.png' ,diferenciaTotal) 
-        
-        cv2.imwrite('images/errorBlue.png' ,diferenciaBlueError) 
-        
-        print(errorNumericoTotal)
-         
-        return BGRImage1
+        #Calculate total (3 channels) error and numeric value
+        totalDiff = encryptedImage - img
+        totalNumericError = np.mean(totalDiff**2)
+        totalNumericError
 
+        return encryptedImage, sImg, heatMap, blueErrorDiff, blueNumericalError, totalDiff, totalNumericError
+
+    ## Functions used for the image reconstruction after the message incrustation in blue channel
     def chunks(self, l, n):
         m = int(n)
         for i in range(0, len(l), m):
@@ -81,13 +79,13 @@ class DCT():
             bits.append(binval)
         self.numBits = bin(len(bits))[2:].rjust(8,'0')
         return bits
-    
-    
+    ##
+
     def incrustationCore(self, bImg, row,col):
         
         # Change image to float32 to fit DCT values
         bImg = np.float32(bImg)
-    
+
         # Break into 8x8 blocks
         imgBlocks = [np.round(bImg[j:j+8, i:i+8]+128) for (j,i) in itertools.product(range(0,row,8),
                                                                        range(0,col,8))]
@@ -100,21 +98,28 @@ class DCT():
         
         # Set LSB in DC value corresponding bit of message
         messIndex = 0
-        letterIndex = 0   
+        letterIndex = 0
 
+        # Calculate the heatmap of the matrix
+        heatMap = sns.heatmap(quantizedDCT[0])
+
+        # Incrustation of the message in blue channel
         for quantizedBlock in quantizedDCT:
             # Find LSB in DCT coeff and replace with message bit
             DC = quantizedBlock[0][0]
             DC = np.uint8(DC)
-            
+
+            # Introduce the next letter of the message
             DC = np.unpackbits(DC)
             DC[7] = self.messageInBits[messIndex][letterIndex]
             DC = np.packbits(DC)
             
+            # Modify old quantizedBlock with the new one that has the message
             DC = np.float32(DC)
             DC= DC-255
             quantizedBlock[0][0] = DC
 
+            # Adds 1 to the letter reader index (mod 8)
             letterIndex = letterIndex+1
             if letterIndex == 8:
                 letterIndex = 0
@@ -138,4 +143,4 @@ class DCT():
         # Converted from type float32 to uint8 again to return it and save
         sImg = np.uint8(sImg)
         
-        return sImg
+        return sImg,heatMap
